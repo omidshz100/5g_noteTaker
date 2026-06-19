@@ -18,12 +18,22 @@ export default function LoginPage() {
     setSigningIn(true);
     try {
       await signIn();
+      // signIn() resolves only after popup succeeds — navigate immediately
+      router.replace('/viewer');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
-    } finally {
       setSigningIn(false);
     }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #F7F8FA 0%, #EEF0FC 100%)' }}>
+        <div style={{ width: 24, height: 24, border: '2px solid #E4E7EC', borderTopColor: '#5B6AD0', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
   }
 
   return (

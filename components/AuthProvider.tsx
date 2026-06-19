@@ -23,17 +23,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const timeout = setTimeout(() => setLoading(false), 3000);
+    const timeout = setTimeout(() => setLoading(false), 5000);
 
     const unsubscribe = onAuthStateChanged(auth, async u => {
       clearTimeout(timeout);
       setUser(u);
       if (u) {
-        await saveUserProfile(u.uid, {
-          name: u.displayName || '',
-          email: u.email || '',
-          photoURL: u.photoURL || '',
-        });
+        // Wrapped in try-catch so Firestore permission errors don't break auth flow
+        try {
+          await saveUserProfile(u.uid, {
+            name: u.displayName || '',
+            email: u.email || '',
+            photoURL: u.photoURL || '',
+          });
+        } catch {
+          // Firestore rules may not be published yet — auth still works
+        }
       }
       setLoading(false);
     });
@@ -43,11 +48,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const result = await signInWithPopup(auth, provider);
+    // Force state update immediately after popup succeeds
+    setUser(result.user);
   };
 
   const logOut = async () => {
     await signOut(auth);
+    setUser(null);
   };
 
   return (
