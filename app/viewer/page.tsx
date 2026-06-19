@@ -44,6 +44,7 @@ export default function ViewerPage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [speakerCursors, setSpeakerCursors] = useState<Record<string, number>>({});
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [loadProgress, setLoadProgress] = useState<{ done: number; total: number } | null>(null);
   const txBodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,7 +58,10 @@ export default function ViewerPage() {
       const res = await fetch('/transcribes/manifest.json');
       if (!res.ok) return;
       const files: string[] = await res.json();
-      const loaded: Session[] = [];
+      if (!files.length) return;
+
+      setLoadProgress({ done: 0, total: files.length });
+
       for (const filename of files) {
         try {
           const r = await fetch(`/transcribes/${encodeURIComponent(filename)}`);
@@ -66,10 +70,15 @@ export default function ViewerPage() {
           const { title, date, lecturer } = parseFilename(filename);
           const speakers = buildSpeakers(data.entries || []);
           const duration = getDuration(data);
-          loaded.push({ id: loaded.length, filename, data, title, date, lecturer, speakers, duration });
+          setSessions(prev => [
+            ...prev,
+            { id: prev.length, filename, data, title, date, lecturer, speakers, duration },
+          ]);
         } catch { /* skip bad files */ }
+        setLoadProgress(prev => prev ? { ...prev, done: prev.done + 1 } : null);
       }
-      setSessions(loaded);
+
+      setLoadProgress(null);
     } catch { /* no manifest */ }
   }
 
@@ -223,9 +232,26 @@ export default function ViewerPage() {
           </label>
         </div>
 
+        {/* Loading progress bar */}
+        {loadProgress && (
+          <div style={{ padding: '10px 14px 6px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#4A5568', marginBottom: 5 }}>
+              <span>Loading transcripts…</span>
+              <span style={{ color: '#5B6AD0', fontWeight: 600 }}>{loadProgress.done}/{loadProgress.total}</span>
+            </div>
+            <div style={{ height: 3, background: '#E4E7EC', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', borderRadius: 3, background: '#5B6AD0',
+                width: `${(loadProgress.done / loadProgress.total) * 100}%`,
+                transition: 'width 0.2s ease',
+              }} />
+            </div>
+          </div>
+        )}
+
         {/* Session list */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
-          {filteredSessions.length === 0 ? (
+          {filteredSessions.length === 0 && !loadProgress ? (
             <div style={{ padding: '28px 14px', textAlign: 'center', color: '#9CA3AF', fontSize: 12.5, lineHeight: 1.6 }}>
               {sessions.length ? 'No sessions match.' : 'Load .json transcript files to get started.'}
             </div>
