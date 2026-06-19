@@ -23,7 +23,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async u => {
+    const timeout = setTimeout(() => setLoading(false), 6000);
+
+    const unsubscribe = onAuthStateChanged(auth, async u => {
+      clearTimeout(timeout);
       setUser(u);
       if (u) {
         await saveUserProfile(u.uid, {
@@ -34,6 +37,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setLoading(false);
     });
+
+    return () => { clearTimeout(timeout); unsubscribe(); };
   }, []);
 
   const signIn = async () => {
