@@ -29,16 +29,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(timeout);
       setUser(u);
       if (u) {
-        // Wrapped in try-catch so Firestore permission errors don't break auth flow
         try {
           await saveUserProfile(u.uid, {
             name: u.displayName || '',
             email: u.email || '',
             photoURL: u.photoURL || '',
           });
-        } catch {
-          // Firestore rules may not be published yet — auth still works
-        }
+        } catch { /* Firestore rules may not be published yet */ }
       }
       setLoading(false);
     });
@@ -47,16 +44,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async () => {
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    const result = await signInWithPopup(auth, provider);
-    // Force state update immediately after popup succeeds
-    setUser(result.user);
+    // Set loading BEFORE popup so the viewer page shows a spinner
+    // instead of seeing user=null and redirecting to login
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await signInWithPopup(auth, provider);
+      // onAuthStateChanged will call setUser + setLoading(false)
+    } catch (err) {
+      setLoading(false);
+      throw err;
+    }
   };
 
   const logOut = async () => {
+    setLoading(true);
     await signOut(auth);
     setUser(null);
+    setLoading(false);
   };
 
   return (

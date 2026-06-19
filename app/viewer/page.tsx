@@ -48,11 +48,7 @@ export default function ViewerPage() {
   const txBodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Only redirect if auth has fully resolved and there's definitely no user
-    if (!loading && !user) {
-      const t = setTimeout(() => router.replace('/login'), 300);
-      return () => clearTimeout(t);
-    }
+    if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
 
   useEffect(() => { autoLoad(); }, []);
@@ -158,8 +154,9 @@ export default function ViewerPage() {
 
   if (loading || !user) {
     return (
-      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 24, height: 24, border: '2px solid #E4E7EC', borderTopColor: '#5B6AD0', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, background: '#F7F8FA' }}>
+        <div style={{ width: 28, height: 28, border: '2.5px solid #E4E7EC', borderTopColor: '#5B6AD0', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+        <span style={{ fontSize: 13, color: '#9CA3AF' }}>Loading…</span>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
