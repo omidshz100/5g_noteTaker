@@ -1,0 +1,23 @@
+Here's the setup for GitHub Pages:
+                                                                                          
+  File structure to push:                                                                            
+  viewer.html                                                                                        
+  transcribes/                                                                                       
+    manifest.json        ← lists all filenames                                                       
+    *.json               ← the transcript files                                                      
+  update_manifest.py     ← run this locally when adding new files                                    
+   
+  To host on GitHub Pages:                                                                           
+  1. Push these files to a GitHub repo                      
+  2. Go to repo Settings → Pages → Source → main branch / root                                       
+  3. Visit https://<you>.github.io/<repo>/viewer.html         
+                                                                                                     
+  When you add new transcripts locally:                                                              
+  python3 update_manifest.py                                                                         
+  Then commit and push manifest.json along with the new .json files.                                 
+                                                                                                     
+  The "Load Transcripts" button still works as a fallback if someone downloads the files and opens
+  viewer.html directly.                                                                              
+                                                            
+✻ Sautéed for 55s                                                                                    
+                                  
