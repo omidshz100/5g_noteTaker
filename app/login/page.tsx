@@ -18,8 +18,8 @@ export default function LoginPage() {
     setSigningIn(true);
     try {
       await signIn();
-      // signIn() resolves only after popup succeeds — navigate immediately
-      router.replace('/viewer');
+      // Don't navigate here — wait for setUser() to propagate through context
+      // then the useEffect above handles the redirect cleanly
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);

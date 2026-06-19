@@ -48,7 +48,11 @@ export default function ViewerPage() {
   const txBodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/login');
+    // Only redirect if auth has fully resolved and there's definitely no user
+    if (!loading && !user) {
+      const t = setTimeout(() => router.replace('/login'), 300);
+      return () => clearTimeout(t);
+    }
   }, [user, loading, router]);
 
   useEffect(() => { autoLoad(); }, []);
