@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transcript Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --sidebar:260px;
+  --bg:#F7F8FA;
+  --white:#FFFFFF;
+  --border:#E4E7EC;
+  --border-light:#F0F2F5;
+  --t1:#0D0F14;
+  --t2:#4A5568;
+  --t3:#9CA3AF;
+  --accent:#5B6AD0;
+  --accent-bg:#EEF0FC;
+  --accent-hover:#4A59C0;
+  --r:8px;
+  --r-sm:5px;
+  --shadow-xs:0 1px 2px rgba(0,0,0,.06);
+  --shadow-sm:0 1px 4px rgba(0,0,0,.07),0 0 1px rgba(0,0,0,.04);
+  --shadow:0 4px 12px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.05);
+}
+
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--t1);
+  height:100vh;
+  display:flex;
+  overflow:hidden;
+  font-size:14px;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── SCROLLBAR ─────────────────────────── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#9CA3AF}
+
+/* ── SIDEBAR ──────────────────────────── */
+.sidebar{
+  width:var(--sidebar);
+  min-width:var(--sidebar);
+  background:var(--white);
+  border-right:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  height:100vh;
+  overflow:hidden;
+}
+
+.sidebar-top{
+  padding:18px 14px 14px;
+  border-bottom:1px solid var(--border-light);
+  flex-shrink:0;
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-bottom:14px;
+}
+
+.brand-icon{
+  width:30px;height:30px;
+  background:var(--accent);
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  box-shadow:0 2px 6px rgba(91,106,208,.35);
+}
+
+.brand-name{
+  font-size:13px;font-weight:600;color:var(--t1);letter-spacing:-.01em;
+}
+
+.brand-count{
+  margin-left:auto;
+  font-size:11px;font-weight:500;
+  background:var(--accent-bg);color:var(--accent);
+  padding:2px 7px;border-radius:10px;
+  display:none;
+}
+
+.s-wrap{position:relative;margin-bottom:10px}
+.s-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--t3)}
+.s-input{
+  width:100%;
+  padding:8px 10px 8px 32px;
+  border:1px solid var(--border);
+  border-radius:var(--r-sm);
+  font:13px/1 'Inter',sans-serif;
+  color:var(--t1);
+  background:var(--bg);
+  outline:none;
+  transition:border-color .15s,background .15s;
+}
+.s-input:focus{border-color:var(--accent);background:var(--white)}
+.s-input::placeholder{color:var(--t3)}
+
+.load-btn{
+  width:100%;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:9px;
+  background:var(--accent);color:#fff;
+  border:none;border-radius:var(--r-sm);
+  font:500 13px/1 'Inter',sans-serif;
+  cursor:pointer;
+  transition:background .15s,transform .1s;
+  letter-spacing:-.01em;
+}
+.load-btn:hover{background:var(--accent-hover)}
+.load-btn:active{transform:scale(.98)}
+
+.session-list{
+  flex:1;overflow-y:auto;
+  padding:6px;
+}
+
+.session-card{
+  padding:11px 10px;
+  border-radius:var(--r-sm);
+  cursor:pointer;
+  transition:background .1s;
+  margin-bottom:1px;
+  border:1px solid transparent;
+  position:relative;
+}
+.session-card:hover{background:var(--bg)}
+.session-card.active{
+  background:var(--accent-bg);
+  border-color:#C7CDF7;
+}
+.session-card.active::before{
+  content:'';
+  position:absolute;left:0;top:0;bottom:0;
+  width:3px;border-radius:3px 0 0 3px;
+  background:var(--accent);
+}
+
+.sc-title{
+  font-size:12.5px;font-weight:500;color:var(--t1);
+  line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  margin-bottom:5px;
+  letter-spacing:-.01em;
+}
+.sc-meta{
+  font-size:11px;color:var(--t3);
+  display:flex;align-items:center;gap:5px;flex-wrap:wrap;
+}
+.sc-dot{width:2px;height:2px;border-radius:50%;background:var(--t3);flex-shrink:0}
+
+.sidebar-empty{
+  padding:32px 14px;text-align:center;color:var(--t3);font-size:12.5px;line-height:1.6;
+}
+.sidebar-empty svg{margin-bottom:10px;opacity:.4}
+
+/* ── MAIN ──────────────────────────────── */
+.main{
+  flex:1;display:flex;flex-direction:column;
+  height:100vh;overflow:hidden;
+  min-width:0;
+}
+
+/* empty state */
+.welcome{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;color:var(--t3);user-select:none;
+}
+.welcome svg{opacity:.25;margin-bottom:4px}
+.welcome h2{font-size:15px;font-weight:500;color:var(--t2)}
+.welcome p{font-size:13px;line-height:1.6;max-width:260px;text-align:center}
+
+/* session header */
+.tx-header{
+  background:var(--white);
+  border-bottom:1px solid var(--border);
+  padding:18px 26px 14px;
+  flex-shrink:0;
+}
+.tx-title-row{
+  display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;
+}
+.tx-title{
+  font-size:16px;font-weight:600;color:var(--t1);
+  line-height:1.3;letter-spacing:-.02em;flex:1;min-width:0;
+}
+.badges{display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap}
+.badge{
+  display:flex;align-items:center;gap:4px;
+  padding:4px 9px;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:20px;
+  font-size:11.5px;font-weight:500;color:var(--t2);
+  white-space:nowrap;
+}
+
+.speakers-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.spk-chip{
+  display:flex;align-items:center;gap:5px;
+  padding:3px 9px 3px 4px;
+  border-radius:20px;font-size:11.5px;font-weight:500;
+  white-space:nowrap;
+  cursor:pointer;
+  transition:transform .12s,box-shadow .12s,opacity .12s;
+  user-select:none;
+}
+.spk-chip:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.12);opacity:.9}
+.spk-chip:active{transform:scale(.96)}
+.spk-chip.spk-active{outline:2px solid currentColor;outline-offset:1px}
+.spk-pos{
+  font-size:9.5px;font-weight:600;
+  opacity:.6;margin-left:1px;letter-spacing:.01em;
+}
+.spk-av{
+  width:20px;height:20px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:8.5px;font-weight:700;color:#fff;flex-shrink:0;
+  letter-spacing:.01em;
+}
+@keyframes flashGroup{
+  0%,100%{background:transparent}
+  25%{background:rgba(91,106,208,.1)}
+}
+.msg-group.flash{animation:flashGroup .7s ease}
+
+/* search bar */
+.tx-search-bar{
+  background:var(--white);
+  border-bottom:1px solid var(--border);
+  padding:10px 26px;
+  display:flex;align-items:center;gap:10px;
+  flex-shrink:0;
+}
+.tx-s-wrap{position:relative;max-width:380px;flex:1}
+.tx-s-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--t3)}
+.tx-s-input{
+  width:100%;
+  padding:7px 10px 7px 32px;
+  border:1px solid var(--border);
+  border-radius:var(--r-sm);
+  font:13px/1 'Inter',sans-serif;
+  color:var(--t1);outline:none;
+  transition:border-color .15s;
+}
+.tx-s-input:focus{border-color:var(--accent)}
+.tx-s-input::placeholder{color:var(--t3)}
+
+.s-count{font-size:11.5px;color:var(--t3);min-width:56px}
+.nav-row{display:flex;gap:3px}
+.nav-btn{
+  width:26px;height:26px;
+  border:1px solid var(--border);background:var(--white);
+  border-radius:var(--r-sm);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--t2);font-size:12px;
+  transition:background .1s,color .1s;line-height:1;
+}
+.nav-btn:hover:not(:disabled){background:var(--bg);color:var(--accent)}
+.nav-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* transcript body */
+.tx-body{
+  flex:1;overflow-y:auto;
+  padding:22px 26px 40px;
+}
+
+.msg-group{
+  display:flex;gap:11px;
+  margin-bottom:18px;
+  animation:fadeIn .2s ease;
+}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.msg-av{
+  width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;color:#fff;
+  flex-shrink:0;margin-top:1px;letter-spacing:.01em;
+}
+
+.msg-body{flex:1;min-width:0}
+
+.msg-meta{
+  display:flex;align-items:baseline;gap:7px;
+  margin-bottom:5px;
+}
+.msg-name{font-size:12.5px;font-weight:600;color:var(--t1);letter-spacing:-.01em}
+.msg-ts{
+  font-size:10.5px;color:var(--t3);
+  font-family:'SF Mono',Menlo,Consolas,monospace;
+  letter-spacing:.01em;
+}
+
+.msg-line{
+  font-size:13.5px;color:var(--t1);line-height:1.65;
+  padding:8px 12px;
+  border-radius:0 8px 8px 8px;
+  margin-bottom:3px;
+  display:block;
+  max-width:700px;
+  word-break:break-word;
+  position:relative;
+}
+.msg-line:first-of-type{border-radius:0 8px 8px 8px}
+.msg-line+.msg-line{border-radius:8px}
+
+mark{
+  background:#FEF9C3;color:inherit;
+  border-radius:2px;padding:0 1px;
+}
+mark.current{background:#FCA5A5}
+
+/* ── LANG TAG ──────────────────────────── */
+.lang-tag{
+  display:inline-flex;align-items:center;
+  font-size:9.5px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;
+  padding:1px 5px;border-radius:3px;
+  margin-left:5px;vertical-align:middle;opacity:.55;
+  font-family:'SF Mono',Menlo,Consolas,monospace;
+}
+
+/* ── CONFIDENCE HINT ──────────────────── */
+.conf-low{opacity:.6;font-style:italic}
+
+/* ── DIVIDER (date/section) ───────────── */
+.time-divider{
+  display:flex;align-items:center;gap:10px;
+  margin:20px 0 16px;color:var(--t3);font-size:11px;font-weight:500;
+  letter-spacing:.05em;text-transform:uppercase;
+}
+.time-divider::before,.time-divider::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+</style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ─────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar-top">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+          <rect x="3" y="4" width="14" height="1.8" rx=".9" fill="white"/>
+          <rect x="3" y="8.1" width="9" height="1.8" rx=".9" fill="white"/>
+          <rect x="3" y="12.2" width="11" height="1.8" rx=".9" fill="white"/>
+        </svg>
+      </div>
+      <span class="brand-name">Transcript Viewer</span>
+      <span class="brand-count" id="brandCount">0</span>
+    </div>
+
+    <div class="s-wrap">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
+      </svg>
+      <input class="s-input" id="sideSearch" type="text" placeholder="Filter sessions…">
+    </div>
+
+    <button class="load-btn" id="loadBtn">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 2v8M5 7l3 3 3-3"/><path d="M2 13h12"/>
+      </svg>
+      Load Transcripts
+    </button>
+    <input type="file" id="fileInput" accept=".json" multiple style="display:none">
+  </div>
+
+  <div class="session-list" id="sessionList">
+    <div class="sidebar-empty">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="3"/>
+        <path d="M7 8h10M7 12h6M7 16h8"/>
+      </svg>
+      <div>Load <strong>.json</strong> transcript files<br>to get started.</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ── MAIN ────────────────────── -->
+<main class="main" id="main">
+  <div class="welcome" id="welcome">
+    <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+      <rect x="3" y="3" width="18" height="18" rx="3"/>
+      <path d="M7 8h10M7 12h6M7 16h8"/>
+    </svg>
+    <h2>No session selected</h2>
+    <p>Load transcript files and select one from the sidebar.</p>
+  </div>
+</main>
+
+<script>
+// ── COLORS ─────────────────────────────────────────────
+const PALETTE = [
+  '#5B6AD0','#E05A7A','#0D9488','#D97706','#7C3AED',
+  '#0891B2','#DC2626','#16A34A','#9333EA','#C2410C',
+  '#1D4ED8','#BE185D','#047857','#B45309','#6D28D9',
+];
+
+function colorFor(idx){ return PALETTE[idx % PALETTE.length]; }
+
+// ── STATE ───────────────────────────────────────────────
+let sessions = [];
+let active = null;
+let matches = [];
+let matchIdx = 0;
+let speakerCursors = {}; // spkId -> current group index
+
+// ── FILE LOAD ───────────────────────────────────────────
+document.getElementById('loadBtn').onclick = () => document.getElementById('fileInput').click();
+
+document.getElementById('fileInput').addEventListener('change', async e => {
+  const files = Array.from(e.target.files);
+  for (const file of files) {
+    if (sessions.find(s => s.filename === file.name)) continue;
+    try {
+      const raw = await file.text();
+      const data = JSON.parse(raw);
+      const { title, date, lecturer } = parseFilename(file.name);
+      const speakers = buildSpeakers(data.entries || []);
+      const duration = getDuration(data);
+      sessions.push({ id: sessions.length, filename: file.name, data, title, date, lecturer, speakers, duration });
+    } catch(err) {
+      console.warn('Failed to load', file.name, err);
+    }
+  }
+  e.target.value = '';
+  renderList();
+  // Update count badge
+  const bc = document.getElementById('brandCount');
+  bc.textContent = sessions.length;
+  bc.style.display = sessions.length ? 'block' : 'none';
+});
+
+// ── FILENAME PARSING ────────────────────────────────────
+function parseFilename(name) {
+  name = name.replace(/\.json$/i, '');
+
+  // Match YYYYMMDD_HHMMSS date pattern
+  const dm = name.match(/[_\-](\d{8})[_\-](\d{6})/);
+  if (!dm) return { title: clean(name), date: '', lecturer: '' };
+
+  const before = name.slice(0, dm.index);
+  const ds = dm[1];
+  const date = `${ds.slice(0,4)}-${ds.slice(4,6)}-${ds.slice(6,8)}`;
+
+  let title = '', lecturer = '';
+
+  if (before.includes('-') && !/^[a-z]/.test(before[0]) === false ? true : before.match(/[A-Z]/)) {
+    // New format: "Topic Title-Lecturer-..."
+    const parts = before.split('-');
+    let cut = parts.length;
+    for (let i = 0; i < parts.length; i++) {
+      if (/^(prof|dr\.|lecturer|team)/i.test(parts[i].trim())) { cut = i; break; }
+    }
+    title = parts.slice(0, cut).join(' ').replace(/\s+/g, ' ').trim();
+    lecturer = parts.slice(cut).join(' ').replace(/\s+/g, ' ').trim();
+  } else {
+    // Old format: underscores
+    const raw = before.replace(/_/g,' ').replace(/\s+/g,' ').trim();
+    // Split off lecturer after detecting common patterns
+    const lm = raw.match(/(.+?)\s+(prof[._\s]|dr[._\s]|lecturer\s|team\s).+/i);
+    if (lm) {
+      title = lm[1].trim();
+      lecturer = raw.slice(lm[1].length).trim();
+    } else {
+      title = raw;
+    }
+    title = titleCase(title);
+    lecturer = titleCase(lecturer);
+  }
+
+  // Strip leftover suffixes
+  title = title.replace(/\s*-\s*view[\s-]?only\s*$/i,'').trim();
+  if (!title) title = clean(name);
+
+  return { title, date, lecturer };
+}
+
+function clean(s){ return s.replace(/_/g,' ').replace(/\s+/g,' ').trim(); }
+function titleCase(s){ return s.replace(/\b\w/g, c => c.toUpperCase()); }
+
+// ── SPEAKERS ────────────────────────────────────────────
+function buildSpeakers(entries) {
+  const map = {};
+  for (const e of entries) {
+    if (!e.speakerId) continue;
+    if (!map[e.speakerId]) map[e.speakerId] = { id:e.speakerId, name:e.speakerDisplayName||'Unknown', count:0 };
+    map[e.speakerId].count++;
+  }
+  return Object.values(map).sort((a,b) => b.count - a.count);
+}
+
+function speakerColor(speakerId, speakers) {
+  const i = speakers.findIndex(s => s.id === speakerId);
+  return colorFor(i < 0 ? 0 : i);
+}
+
+function initials(name) {
+  const parts = (name||'?').trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+}
+
+// ── DURATION ────────────────────────────────────────────
+function getDuration(data) {
+  const entries = data.entries || [];
+  if (!entries.length) return null;
+  const last = entries[entries.length-1];
+  return last.endOffset || last.startOffset || null;
+}
+
+function fmtDuration(off) {
+  if (!off) return '';
+  const m = off.match(/^(\d+):(\d+):(\d+)/);
+  if (!m) return '';
+  const h = +m[1], min = +m[2], s = +m[3];
+  if (h > 0) return `${h}h ${min}m`;
+  if (min > 0) return `${min}m ${s}s`;
+  return `${s}s`;
+}
+
+function fmtTS(off) {
+  if (!off) return '';
+  const m = off.match(/^(\d+):(\d+):(\d+)/);
+  if (!m) return '';
+  const h = +m[1], min = +m[2], s = +m[3];
+  const mm = String(min).padStart(2,'0');
+  const ss = String(s).padStart(2,'0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  const [y,mo,day] = d.split('-');
+  return new Date(+y, +mo-1, +day).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+
+// ── SIDEBAR LIST ────────────────────────────────────────
+function renderList(filter = '') {
+  const el = document.getElementById('sessionList');
+  const q = filter.toLowerCase();
+  const visible = sessions.filter(s =>
+    !q || s.title.toLowerCase().includes(q) || s.date.includes(q) || s.lecturer.toLowerCase().includes(q)
+  ).sort((a,b) => b.date.localeCompare(a.date));
+
+  if (!visible.length) {
+    el.innerHTML = `<div class="sidebar-empty">${
+      sessions.length ? 'No sessions match.' : `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10M7 12h6M7 16h8"/></svg><div>Load <strong>.json</strong> transcript files<br>to get started.</div>`
+    }</div>`;
+    return;
+  }
+
+  el.innerHTML = visible.map(s => `
+    <div class="session-card ${active?.id===s.id?'active':''}" onclick="openSession(${s.id})">
+      <div class="sc-title">${esc(s.title)}</div>
+      <div class="sc-meta">
+        ${s.date?`<span>${fmtDate(s.date)}</span>`:''}
+        ${s.date&&s.duration?'<span class="sc-dot"></span>':''}
+        ${s.duration?`<span>${fmtDuration(s.duration)}</span>`:''}
+        ${s.speakers.length?`<span class="sc-dot"></span><span>${s.speakers.length} speakers</span>`:''}
+      </div>
+    </div>`).join('');
+}
+
+document.getElementById('sideSearch').addEventListener('input', e => renderList(e.target.value));
+
+// ── OPEN SESSION ────────────────────────────────────────
+function openSession(id) {
+  active = sessions.find(s => s.id === id);
+  renderList(document.getElementById('sideSearch').value);
+  renderTranscript(active);
+}
+
+// ── GROUP ENTRIES ───────────────────────────────────────
+function groupEntries(entries) {
+  const groups = [];
+  let cur = null;
+  for (const e of entries) {
+    if (!cur || cur.speakerId !== e.speakerId) {
+      cur = { speakerId:e.speakerId, name:e.speakerDisplayName||'Unknown', startOffset:e.startOffset, entries:[] };
+      groups.push(cur);
+    }
+    cur.entries.push(e);
+  }
+  return groups;
+}
+
+// ── RENDER TRANSCRIPT ───────────────────────────────────
+function renderTranscript(session) {
+  const main = document.getElementById('main');
+  const { speakers, data, title, date, duration, lecturer } = session;
+
+  // Participants chips
+  const chipsHtml = speakers.slice(0,12).map((sp,i) => {
+    const c = colorFor(i);
+    return `<div class="spk-chip" data-spk-id="${esc(sp.id)}" style="background:${c}18;border:1px solid ${c}28;color:${c}" title="Click to jump to ${esc(sp.name)}'s messages">
+      <div class="spk-av" style="background:${c}">${esc(initials(sp.name))}</div>
+      <span style="color:${c}">${esc(sp.name)}</span>
+      <span class="spk-pos" id="spk-pos-${esc(sp.id.replace(/[^a-z0-9]/gi,'_'))}"></span>
+    </div>`;
+  }).join('');
+
+  // Badge row
+  const badges = [
+    date ? `<div class="badge"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M5 1v3M11 1v3M2 7h12"/></svg> ${fmtDate(date)}</div>` : '',
+    duration ? `<div class="badge"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5l2.5 1.5"/></svg> ${fmtDuration(duration)}</div>` : '',
+    `<div class="badge"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 11.5C2 9.5 4 8 6 8h4c2 0 4 1.5 4 3.5"/><circle cx="8" cy="4.5" r="2.5"/></svg> ${speakers.length}</div>`,
+    `<div class="badge"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 13V8a5 5 0 0110 0v5M1 9h2M13 9h2"/></svg> ${(data.entries||[]).length.toLocaleString()}</div>`,
+  ].filter(Boolean).join('');
+
+  // Message groups
+  const groups = groupEntries(data.entries || []);
+  let prevHour = -1;
+
+  const groupsHtml = groups.map(group => {
+    const c = speakerColor(group.speakerId, speakers);
+    const av = initials(group.name);
+    const ts = fmtTS(group.startOffset);
+
+    // Hour divider every new hour
+    let divider = '';
+    const hmatch = (group.startOffset||'').match(/^(\d+):/);
+    if (hmatch) {
+      const h = +hmatch[1];
+      if (h !== prevHour) {
+        prevHour = h;
+        if (h > 0) divider = `<div class="time-divider">Hour ${h}</div>`;
+      }
+    }
+
+    const linesHtml = group.entries.map(e => {
+      const lowConf = e.confidence < 0.25;
+      return `<span class="msg-line${lowConf?' conf-low':''}" data-text="${esc(e.text||'')}">${esc(e.text||'')}</span>`;
+    }).join('');
+
+    return `${divider}<div class="msg-group" data-spk-id="${esc(group.speakerId)}">
+      <div class="msg-av" style="background:${c}" title="${esc(group.name)}">${esc(av)}</div>
+      <div class="msg-body">
+        <div class="msg-meta">
+          <span class="msg-name">${esc(group.name)}</span>
+          <span class="msg-ts">${ts}</span>
+        </div>
+        ${linesHtml}
+      </div>
+    </div>`;
+  }).join('');
+
+  main.innerHTML = `
+    <div class="tx-header">
+      <div class="tx-title-row">
+        <div class="tx-title">${esc(title)}${lecturer ? `<span style="font-weight:400;color:var(--t2);font-size:13px;margin-left:8px">${esc(lecturer)}</span>` : ''}</div>
+        <div class="badges">${badges}</div>
+      </div>
+      <div class="speakers-row">${chipsHtml}</div>
+    </div>
+
+    <div class="tx-search-bar">
+      <div class="tx-s-wrap">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
+        </svg>
+        <input class="tx-s-input" id="txSearch" type="text" placeholder="Search in transcript…" oninput="doSearch(this.value)">
+      </div>
+      <span class="s-count" id="sCount"></span>
+      <div class="nav-row">
+        <button class="nav-btn" id="prevBtn" onclick="stepSearch(-1)" disabled title="Previous">↑</button>
+        <button class="nav-btn" id="nextBtn" onclick="stepSearch(1)" disabled title="Next">↓</button>
+      </div>
+    </div>
+
+    <div class="tx-body" id="txBody">${groupsHtml}</div>
+  `;
+
+  matches = []; matchIdx = 0;
+  speakerCursors = {};
+
+  // Attach chip click handler via delegation
+  document.querySelector('.speakers-row').addEventListener('click', e => {
+    const chip = e.target.closest('.spk-chip');
+    if (chip) jumpSpeaker(chip.dataset.spkId);
+  });
+}
+
+// ── SPEAKER JUMP ────────────────────────────────────────
+function jumpSpeaker(spkId) {
+  const body = document.getElementById('txBody');
+  if (!body) return;
+
+  const groups = Array.from(body.querySelectorAll(`.msg-group[data-spk-id="${CSS.escape(spkId)}"]`));
+  if (!groups.length) return;
+
+  // Cycle: advance cursor each click
+  const cur = (speakerCursors[spkId] ?? -1) + 1;
+  speakerCursors[spkId] = cur % groups.length;
+  const target = groups[speakerCursors[spkId]];
+
+  // Scroll to target
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // Flash animation
+  target.classList.remove('flash');
+  void target.offsetWidth; // reflow to restart animation
+  target.classList.add('flash');
+  target.addEventListener('animationend', () => target.classList.remove('flash'), { once: true });
+
+  // Mark active chip
+  document.querySelectorAll('.spk-chip').forEach(c => c.classList.remove('spk-active'));
+  const chip = document.querySelector(`.spk-chip[data-spk-id="${CSS.escape(spkId)}"]`);
+  if (chip) chip.classList.add('spk-active');
+
+  // Update position counter on the chip
+  const safeId = spkId.replace(/[^a-z0-9]/gi, '_');
+  const posEl = document.getElementById(`spk-pos-${safeId}`);
+  if (posEl) posEl.textContent = `${speakerCursors[spkId] + 1}/${groups.length}`;
+}
+
+// ── SEARCH ──────────────────────────────────────────────
+function doSearch(q) {
+  const body = document.getElementById('txBody');
+  if (!body) return;
+
+  // Reset all lines to original text
+  body.querySelectorAll('.msg-line').forEach(el => {
+    el.innerHTML = esc(el.dataset.text || '');
+  });
+
+  matches = []; matchIdx = 0;
+  const countEl = document.getElementById('sCount');
+  const prev = document.getElementById('prevBtn');
+  const next = document.getElementById('nextBtn');
+
+  if (!q.trim()) {
+    countEl.textContent = '';
+    prev.disabled = next.disabled = true;
+    return;
+  }
+
+  const ql = q.toLowerCase();
+  body.querySelectorAll('.msg-line').forEach(el => {
+    const text = el.dataset.text || '';
+    if (!text.toLowerCase().includes(ql)) return;
+    el.innerHTML = highlight(text, q);
+    el.querySelectorAll('mark').forEach(m => matches.push(m));
+  });
+
+  if (!matches.length) {
+    countEl.textContent = 'No results';
+    prev.disabled = next.disabled = true;
+  } else {
+    matchIdx = 0;
+    setCurrent();
+    countEl.textContent = `1 / ${matches.length}`;
+    prev.disabled = next.disabled = matches.length < 2;
+  }
+}
+
+function stepSearch(dir) {
+  if (!matches.length) return;
+  matchIdx = (matchIdx + dir + matches.length) % matches.length;
+  setCurrent();
+  document.getElementById('sCount').textContent = `${matchIdx+1} / ${matches.length}`;
+}
+
+function setCurrent() {
+  matches.forEach((m,i) => m.classList.toggle('current', i === matchIdx));
+  matches[matchIdx]?.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+function highlight(text, q) {
+  const parts = [];
+  const ql = q.toLowerCase();
+  let pos = 0;
+  const tl = text.toLowerCase();
+  while (true) {
+    const idx = tl.indexOf(ql, pos);
+    if (idx < 0) break;
+    parts.push(esc(text.slice(pos, idx)));
+    parts.push(`<mark>${esc(text.slice(idx, idx+q.length))}</mark>`);
+    pos = idx + q.length;
+  }
+  parts.push(esc(text.slice(pos)));
+  return parts.join('');
+}
+
+// ── UTIL ────────────────────────────────────────────────
+function esc(s) {
+  return String(s||'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// Keyboard nav for search
+document.addEventListener('keydown', e => {
+  if ((e.target.id === 'txSearch') && matches.length) {
+    if (e.key === 'Enter') { e.shiftKey ? stepSearch(-1) : stepSearch(1); e.preventDefault(); }
+    if (e.key === 'ArrowDown') { stepSearch(1); e.preventDefault(); }
+    if (e.key === 'ArrowUp') { stepSearch(-1); e.preventDefault(); }
+  }
+});
+
+// ── AUTO-LOAD FROM MANIFEST ──────────────────────────────
+async function autoLoad() {
+  try {
+    const res = await fetch('transcribes/manifest.json');
+    if (!res.ok) return;
+    const files = await res.json();
+    if (!files.length) return;
+
+    document.getElementById('sessionList').innerHTML =
+      `<div class="sidebar-empty">Loading ${files.length} transcripts…</div>`;
+
+    for (const filename of files) {
+      if (sessions.find(s => s.filename === filename)) continue;
+      try {
+        const r = await fetch(`transcribes/${encodeURIComponent(filename)}`);
+        if (!r.ok) continue;
+        const data = JSON.parse(await r.text());
+        const { title, date, lecturer } = parseFilename(filename);
+        const speakers = buildSpeakers(data.entries || []);
+        const duration = getDuration(data);
+        sessions.push({ id: sessions.length, filename, data, title, date, lecturer, speakers, duration });
+      } catch(err) {
+        console.warn('Failed to load', filename, err);
+      }
+    }
+
+    renderList();
+    const bc = document.getElementById('brandCount');
+    bc.textContent = sessions.length;
+    bc.style.display = sessions.length ? 'block' : 'none';
+  } catch(e) {
+    // No manifest found — manual file load still works
+  }
+}
+
+document.addEventListener('DOMContentLoaded', autoLoad);
+</script>
+</body>
+</html>
