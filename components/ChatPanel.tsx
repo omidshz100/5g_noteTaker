@@ -9,12 +9,13 @@ interface Props {
   session: Session;
   user: User;
   onClose: () => void;
+  onFirstMessage?: (docId: string) => void;
   mobile?: boolean;
 }
 
 const MAX_HISTORY = 20;
 
-export default function ChatPanel({ session, user, onClose, mobile }: Props) {
+export default function ChatPanel({ session, user, onClose, onFirstMessage, mobile }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,11 +29,13 @@ export default function ChatPanel({ session, user, onClose, mobile }: Props) {
     setMessages([]);
     setSessionCost(0);
     setLoadingHistory(true);
-    loadChatMessages(user.uid, docId).then(msgs => {
-      setMessages(msgs);
-      setSessionCost(msgs.filter(m => m.costEur).reduce((s, m) => s + (m.costEur || 0), 0));
-      setLoadingHistory(false);
-    });
+    loadChatMessages(user.uid, docId)
+      .then(msgs => {
+        setMessages(msgs);
+        setSessionCost(msgs.filter(m => m.costEur).reduce((s, m) => s + (m.costEur || 0), 0));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingHistory(false));
   }, [session.filename, user.uid, docId]);
 
   useEffect(() => {
@@ -49,7 +52,9 @@ export default function ChatPanel({ session, user, onClose, mobile }: Props) {
     setMessages(newMessages);
     setLoading(true);
 
-    await saveChatMessage(user.uid, docId, session.title, userMsg);
+    // Save user message — don't block chat if Firestore fails
+    saveChatMessage(user.uid, docId, session.title, userMsg).catch(() => {});
+    if (messages.length === 0) onFirstMessage?.(docId);
 
     const history = newMessages.slice(-MAX_HISTORY).map(m => ({ role: m.role, content: m.content }));
 
@@ -77,9 +82,11 @@ export default function ChatPanel({ session, user, onClose, mobile }: Props) {
 
       setMessages(prev => [...prev, assistantMsg]);
       setSessionCost(prev => prev + (data.costEur || 0));
-      await saveChatMessage(user.uid, docId, session.title, assistantMsg);
-    } catch {
-      const errMsg: ChatMessage = { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' };
+      // Save assistant message — don't block UI if Firestore fails
+      saveChatMessage(user.uid, docId, session.title, assistantMsg).catch(() => {});
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      const errMsg: ChatMessage = { role: 'assistant', content: `Error: ${msg}` };
       setMessages(prev => [...prev, errMsg]);
     } finally {
       setLoading(false);

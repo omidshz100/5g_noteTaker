@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import ChatPanel from '@/components/ChatPanel';
 import { Session, TranscriptData, EntryGroup } from '@/lib/types';
+import { loadChatIndex, transcriptDocId } from '@/lib/firestore';
 import {
   parseFilename, buildSpeakers, getDuration, colorFor, initials,
   fmtTS, fmtDate, fmtDuration, groupEntries, speakerColor,
@@ -47,6 +48,7 @@ export default function ViewerPage() {
   const [loadProgress, setLoadProgress] = useState<{ done: number; total: number } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatIndex, setChatIndex] = useState<Set<string>>(new Set());
   const txBodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,6 +60,9 @@ export default function ViewerPage() {
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
+    if (!loading && user) {
+      loadChatIndex(user.uid).then(idx => setChatIndex(idx)).catch(() => {});
+    }
   }, [user, loading, router]);
 
   useEffect(() => { autoLoad(); }, []);
@@ -321,12 +326,26 @@ export default function ViewerPage() {
                   borderRadius: '3px 0 0 3px', background: '#5B6AD0',
                 }} />
               )}
-              <div style={{
-                fontSize: 12.5, fontWeight: 500, color: '#0D0F14', lineHeight: 1.35,
-                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                overflow: 'hidden', marginBottom: 4, letterSpacing: '-.01em',
-              }}>
-                {s.title}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5, marginBottom: 4 }}>
+                <div style={{
+                  fontSize: 12.5, fontWeight: 500, color: '#0D0F14', lineHeight: 1.35,
+                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden', flex: 1, letterSpacing: '-.01em',
+                }}>
+                  {s.title}
+                </div>
+                {chatIndex.has(transcriptDocId(s.filename)) && (
+                  <div title="Has chat history" style={{
+                    flexShrink: 0, marginTop: 2,
+                    width: 16, height: 16, borderRadius: '50%',
+                    background: '#EEF0FC', border: '1px solid #C7CDF7',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none">
+                      <path d="M2 3h12a1 1 0 011 1v7a1 1 0 01-1 1H5l-3 3V4a1 1 0 011-1z" fill="#5B6AD0"/>
+                    </svg>
+                  </div>
+                )}
               </div>
               <div style={{ fontSize: 11, color: '#9CA3AF', display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                 {s.date && <span>{fmtDate(s.date)}</span>}
@@ -721,6 +740,7 @@ export default function ViewerPage() {
               session={active}
               user={user}
               onClose={() => setChatOpen(false)}
+              onFirstMessage={id => setChatIndex(prev => new Set([...prev, id]))}
               mobile
             />
           </div>
@@ -729,6 +749,7 @@ export default function ViewerPage() {
             session={active}
             user={user}
             onClose={() => setChatOpen(false)}
+            onFirstMessage={id => setChatIndex(prev => new Set([...prev, id]))}
           />
         )
       )}

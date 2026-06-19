@@ -51,3 +51,9 @@ export async function getUserStats(uid: string): Promise<{ totalCostEur: number;
   const snap = await getDoc(ref);
   return snap.exists() ? (snap.data() as { totalCostEur: number; totalTokensInput: number; totalTokensOutput: number }) : null;
 }
+
+export async function loadChatIndex(uid: string): Promise<Set<string>> {
+  const chatsRef = collection(db, 'users', uid, 'chats');
+  const snap = await getDocs(chatsRef);
+  return new Set(snap.docs.map(d => d.id));
+}
