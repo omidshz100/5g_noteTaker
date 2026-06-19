@@ -95,7 +95,7 @@ export default function ChatPanel({ session, user, onClose }: Props) {
 
   return (
     <div style={{
-      width: 360, minWidth: 360,
+      width: 360, minWidth: 320, maxWidth: 360, flexShrink: 0,
       display: 'flex', flexDirection: 'column',
       height: '100vh',
       background: '#fff',

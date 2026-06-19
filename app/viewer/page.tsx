@@ -163,7 +163,7 @@ export default function ViewerPage() {
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif', minWidth: 0 }}>
 
       {/* ── SIDEBAR ──────────────────────────────────── */}
       <aside style={{
@@ -537,28 +537,13 @@ export default function ViewerPage() {
         )}
       </main>
 
-      {/* ── CHAT PANEL — fixed overlay from right ────── */}
+      {/* ── CHAT PANEL — inline next to transcript ───── */}
       {chatOpen && active && (
-        <>
-          {/* backdrop */}
-          <div
-            onClick={() => setChatOpen(false)}
-            style={{
-              position: 'fixed', inset: 0, zIndex: 40,
-              background: 'rgba(0,0,0,0.15)',
-            }}
-          />
-          <div style={{
-            position: 'fixed', top: 0, right: 0, bottom: 0,
-            zIndex: 50, boxShadow: '-4px 0 24px rgba(0,0,0,0.12)',
-          }}>
-            <ChatPanel
-              session={active}
-              user={user}
-              onClose={() => setChatOpen(false)}
-            />
-          </div>
-        </>
+        <ChatPanel
+          session={active}
+          user={user}
+          onClose={() => setChatOpen(false)}
+        />
       )}
     </div>
   );
