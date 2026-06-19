@@ -16,6 +16,12 @@ interface Props {
 
 const MAX_HISTORY = 20;
 
+function detectDir(text: string): 'rtl' | 'ltr' {
+  const rtl = (text.match(/[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/g) || []).length;
+  const letters = (text.match(/\p{L}/gu) || []).length;
+  return letters > 0 && rtl / letters > 0.3 ? 'rtl' : 'ltr';
+}
+
 export default function ChatPanel({ session, user, onClose, onFirstMessage, mobile }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -222,14 +228,17 @@ export default function ChatPanel({ session, user, onClose, onFirstMessage, mobi
 
                 {/* Bubble */}
                 <div style={{ maxWidth: '80%' }}>
-                  <div style={{
-                    padding: '8px 11px',
-                    borderRadius: msg.role === 'user' ? '12px 2px 12px 12px' : '2px 12px 12px 12px',
-                    background: msg.role === 'user' ? '#5B6AD0' : '#F7F8FA',
-                    color: msg.role === 'user' ? '#fff' : '#0D0F14',
-                    fontSize: 13, lineHeight: 1.6,
-                    wordBreak: 'break-word',
-                  }}>
+                  <div
+                    dir={detectDir(msg.content)}
+                    style={{
+                      padding: '8px 11px',
+                      borderRadius: msg.role === 'user' ? '12px 2px 12px 12px' : '2px 12px 12px 12px',
+                      background: msg.role === 'user' ? '#5B6AD0' : '#F7F8FA',
+                      color: msg.role === 'user' ? '#fff' : '#0D0F14',
+                      fontSize: 13, lineHeight: 1.6,
+                      wordBreak: 'break-word',
+                    }}
+                  >
                     {msg.role === 'user' ? (
                       <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
                     ) : (
