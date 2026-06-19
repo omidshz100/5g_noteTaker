@@ -9,11 +9,12 @@ interface Props {
   session: Session;
   user: User;
   onClose: () => void;
+  mobile?: boolean;
 }
 
 const MAX_HISTORY = 20;
 
-export default function ChatPanel({ session, user, onClose }: Props) {
+export default function ChatPanel({ session, user, onClose, mobile }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -95,11 +96,14 @@ export default function ChatPanel({ session, user, onClose }: Props) {
 
   return (
     <div style={{
-      width: 360, minWidth: 320, maxWidth: 360, flexShrink: 0,
+      width: mobile ? '100%' : 360,
+      minWidth: mobile ? 0 : 320,
+      maxWidth: mobile ? '100%' : 360,
+      flexShrink: 0,
       display: 'flex', flexDirection: 'column',
-      height: '100vh',
+      height: mobile ? '100%' : '100vh',
       background: '#fff',
-      borderLeft: '1px solid #E4E7EC',
+      borderLeft: mobile ? 'none' : '1px solid #E4E7EC',
     }}>
       {/* Header */}
       <div style={{

@@ -45,7 +45,16 @@ export default function ViewerPage() {
   const [speakerCursors, setSpeakerCursors] = useState<Record<string, number>>({});
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [loadProgress, setLoadProgress] = useState<{ done: number; total: number } | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const txBodyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -115,6 +124,7 @@ export default function ViewerPage() {
     setMatchCount(0);
     setMatchIdx(0);
     setSpeakerCursors({});
+    if (isMobile) setSidebarOpen(false);
   }
 
   const doSearch = useCallback((q: string) => {
@@ -162,29 +172,78 @@ export default function ViewerPage() {
     );
   }
 
+  const sidebarStyle = isMobile ? {
+    position: 'fixed' as const,
+    top: 0, left: 0, bottom: 0,
+    zIndex: 200,
+    transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+    transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+    boxShadow: sidebarOpen ? '4px 0 28px rgba(0,0,0,0.18)' : 'none',
+    width: 280, minWidth: 280,
+    background: '#fff',
+    borderRight: '1px solid #E4E7EC',
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    height: '100dvh',
+    overflow: 'hidden' as const,
+  } : {
+    width: 260, minWidth: 260,
+    background: '#fff',
+    borderRight: '1px solid #E4E7EC',
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    height: '100vh',
+    overflow: 'hidden' as const,
+  };
+
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif', minWidth: 0 }}>
 
+      {/* ── MOBILE BACKDROP ──────────────────────────── */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            zIndex: 150,
+          }}
+        />
+      )}
+
       {/* ── SIDEBAR ──────────────────────────────────── */}
-      <aside style={{
-        width: 260, minWidth: 260,
-        background: '#fff', borderRight: '1px solid #E4E7EC',
-        display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden',
-      }}>
+      <aside style={sidebarStyle}>
         {/* Brand */}
         <div style={{ padding: '14px 14px 12px', borderBottom: '1px solid #F0F2F5', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}>
-            <div style={{
-              width: 30, height: 30, background: '#5B6AD0', borderRadius: 8,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 6px rgba(91,106,208,.35)', flexShrink: 0,
-            }}>
-              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
-                <rect x="3" y="4" width="14" height="1.8" rx=".9" fill="white"/>
-                <rect x="3" y="8.1" width="9" height="1.8" rx=".9" fill="white"/>
-                <rect x="3" y="12.2" width="11" height="1.8" rx=".9" fill="white"/>
-              </svg>
-            </div>
+            {/* Close button on mobile */}
+            {isMobile && (
+              <button
+                onClick={() => setSidebarOpen(false)}
+                style={{
+                  width: 30, height: 30, border: 'none', background: 'none',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', borderRadius: 7, flexShrink: 0,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M1 1l12 12M13 1L1 13" stroke="#4A5568" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </button>
+            )}
+            {!isMobile && (
+              <div style={{
+                width: 30, height: 30, background: '#5B6AD0', borderRadius: 8,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 2px 6px rgba(91,106,208,.35)', flexShrink: 0,
+              }}>
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                  <rect x="3" y="4" width="14" height="1.8" rx=".9" fill="white"/>
+                  <rect x="3" y="8.1" width="9" height="1.8" rx=".9" fill="white"/>
+                  <rect x="3" y="12.2" width="11" height="1.8" rx=".9" fill="white"/>
+                </svg>
+              </div>
+            )}
             <span style={{ fontSize: 13, fontWeight: 600, color: '#0D0F14', letterSpacing: '-.01em' }}>
               Transcript Viewer
             </span>
@@ -209,7 +268,7 @@ export default function ViewerPage() {
               value={sideSearch}
               onChange={e => setSideSearch(e.target.value)}
               style={{
-                width: '100%', padding: '7px 10px 7px 30px',
+                width: '100%', padding: '8px 10px 8px 30px',
                 border: '1px solid #E4E7EC', borderRadius: 5,
                 font: '13px/1 Inter, sans-serif', color: '#0D0F14',
                 background: '#F7F8FA', outline: 'none',
@@ -217,7 +276,6 @@ export default function ViewerPage() {
             />
           </div>
 
-          {/* Load button — hidden, transcripts auto-load from server */}
           <input type="file" accept=".json" multiple style={{ display: 'none' }}
             onChange={e => { if (e.target.files) loadFiles(e.target.files); e.target.value = ''; }} />
         </div>
@@ -243,14 +301,14 @@ export default function ViewerPage() {
         <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
           {filteredSessions.length === 0 && !loadProgress ? (
             <div style={{ padding: '28px 14px', textAlign: 'center', color: '#9CA3AF', fontSize: 12.5, lineHeight: 1.6 }}>
-              {sessions.length ? 'No sessions match.' : 'Load .json transcript files to get started.'}
+              {sessions.length ? 'No sessions match.' : 'Loading transcripts…'}
             </div>
           ) : filteredSessions.map(s => (
             <div
               key={s.id}
               onClick={() => openSession(s)}
               style={{
-                padding: '10px 10px', borderRadius: 5, cursor: 'pointer',
+                padding: '11px 10px', borderRadius: 5, cursor: 'pointer',
                 marginBottom: 1, border: '1px solid transparent',
                 background: active?.id === s.id ? '#EEF0FC' : 'transparent',
                 borderColor: active?.id === s.id ? '#C7CDF7' : 'transparent',
@@ -291,7 +349,7 @@ export default function ViewerPage() {
               transition: 'background .1s',
             }}
           >
-            <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#E4E7EC' }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#E4E7EC' }}>
               {user.photoURL
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={user.photoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -308,6 +366,9 @@ export default function ViewerPage() {
                 {user.email}
               </div>
             </div>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0, color: '#9CA3AF' }}>
+              <path d="M2 4l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </div>
           {showUserMenu && (
             <div style={{
@@ -318,9 +379,9 @@ export default function ViewerPage() {
               <button
                 onClick={() => { setShowUserMenu(false); logOut(); router.replace('/login'); }}
                 style={{
-                  width: '100%', padding: '8px 10px', background: 'none', border: 'none',
+                  width: '100%', padding: '10px 10px', background: 'none', border: 'none',
                   borderRadius: 5, cursor: 'pointer', textAlign: 'left',
-                  fontSize: 12.5, color: '#DC2626', display: 'flex', alignItems: 'center', gap: 8,
+                  fontSize: 13, color: '#DC2626', display: 'flex', alignItems: 'center', gap: 8,
                 }}
               >
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -334,98 +395,211 @@ export default function ViewerPage() {
       </aside>
 
       {/* ── MAIN ─────────────────────────────────────── */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', minWidth: 0 }}>
+      <main style={{
+        flex: 1,
+        display: 'flex', flexDirection: 'column',
+        height: '100vh', overflow: 'hidden', minWidth: 0,
+      }}>
+
+        {/* ── MOBILE TOP BAR ───────────────────────────── */}
+        {isMobile && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '0 12px', height: 52, flexShrink: 0,
+            background: '#fff', borderBottom: '1px solid #E4E7EC',
+          }}>
+            {/* Hamburger */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              style={{
+                width: 38, height: 38, border: 'none', background: '#F7F8FA',
+                borderRadius: 9, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}
+            >
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+                <path d="M1 1h14M1 6h14M1 11h14" stroke="#0D0F14" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            </button>
+
+            {/* Brand / active title */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {active ? (
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#0D0F14', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-.01em' }}>
+                  {active.title}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <div style={{ width: 26, height: 26, background: '#5B6AD0', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none">
+                      <rect x="3" y="4" width="14" height="1.8" rx=".9" fill="white"/>
+                      <rect x="3" y="8.1" width="9" height="1.8" rx=".9" fill="white"/>
+                      <rect x="3" y="12.2" width="11" height="1.8" rx=".9" fill="white"/>
+                    </svg>
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#0D0F14' }}>Transcript Viewer</span>
+                </div>
+              )}
+            </div>
+
+            {/* Chat toggle button (mobile) */}
+            {active && (
+              <button
+                onClick={() => setChatOpen(p => !p)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '7px 12px', border: 'none', borderRadius: 20,
+                  background: chatOpen ? '#5B6AD0' : '#EEF0FC',
+                  color: chatOpen ? '#fff' : '#5B6AD0',
+                  fontSize: 12, fontWeight: 500, cursor: 'pointer', flexShrink: 0,
+                }}
+              >
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M2 3h12a1 1 0 011 1v7a1 1 0 01-1 1H5l-3 3V4a1 1 0 011-1z"/>
+                </svg>
+                Chat
+              </button>
+            )}
+          </div>
+        )}
+
         {!active ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#9CA3AF' }}>
-            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#9CA3AF', padding: 24 }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
               <rect x="3" y="3" width="18" height="18" rx="3"/>
               <path d="M7 8h10M7 12h6M7 16h8"/>
             </svg>
             <div style={{ fontSize: 15, fontWeight: 500, color: '#4A5568' }}>No session selected</div>
-            <div style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 260, textAlign: 'center' }}>
-              Load transcript files and select one from the sidebar.
+            <div style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 240, textAlign: 'center' }}>
+              {isMobile ? 'Tap the menu to select a transcript.' : 'Select a transcript from the sidebar.'}
             </div>
+            {isMobile && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                style={{
+                  marginTop: 8, padding: '10px 20px', border: 'none', borderRadius: 20,
+                  background: '#5B6AD0', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                }}
+              >
+                Open Transcripts
+              </button>
+            )}
           </div>
         ) : (
           <>
-            {/* Header */}
-            <div style={{ background: '#fff', borderBottom: '1px solid #E4E7EC', padding: '16px 24px 12px', flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 16, fontWeight: 600, color: '#0D0F14', lineHeight: 1.3, letterSpacing: '-.02em' }}>
-                    {active.title}
-                    {active.lecturer && (
-                      <span style={{ fontWeight: 400, color: '#4A5568', fontSize: 13, marginLeft: 8 }}>
-                        {active.lecturer}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-                  {[
-                    active.date && { icon: 'cal', text: fmtDate(active.date) },
-                    active.duration && { icon: 'clk', text: fmtDuration(active.duration) },
-                    { icon: 'usr', text: `${active.speakers.length} speakers` },
-                    { icon: 'msg', text: `${(active.data.entries || []).length.toLocaleString()} entries` },
-                  ].filter(Boolean).map((b, i) => (
-                    <div key={i} style={{
-                      display: 'flex', alignItems: 'center', gap: 4,
-                      padding: '4px 9px', background: '#F7F8FA', border: '1px solid #E4E7EC',
-                      borderRadius: 20, fontSize: 11.5, fontWeight: 500, color: '#4A5568', whiteSpace: 'nowrap',
-                    }}>
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      {(b as any).text}
+            {/* Desktop Header (hidden on mobile) */}
+            {!isMobile && (
+              <div style={{ background: '#fff', borderBottom: '1px solid #E4E7EC', padding: '16px 24px 12px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: '#0D0F14', lineHeight: 1.3, letterSpacing: '-.02em' }}>
+                      {active.title}
+                      {active.lecturer && (
+                        <span style={{ fontWeight: 400, color: '#4A5568', fontSize: 13, marginLeft: 8 }}>
+                          {active.lecturer}
+                        </span>
+                      )}
                     </div>
-                  ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+                    {[
+                      active.date && { text: fmtDate(active.date) },
+                      active.duration && { text: fmtDuration(active.duration) },
+                      { text: `${active.speakers.length} speakers` },
+                      { text: `${(active.data.entries || []).length.toLocaleString()} entries` },
+                    ].filter(Boolean).map((b, i) => (
+                      <div key={i} style={{
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        padding: '4px 9px', background: '#F7F8FA', border: '1px solid #E4E7EC',
+                        borderRadius: 20, fontSize: 11.5, fontWeight: 500, color: '#4A5568', whiteSpace: 'nowrap',
+                      }}>
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {(b as any).text}
+                      </div>
+                    ))}
 
-                  {/* Chat toggle */}
-                  <button
-                    onClick={() => setChatOpen(p => !p)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 5,
-                      padding: '5px 11px', border: 'none', borderRadius: 20,
-                      background: chatOpen ? '#5B6AD0' : '#EEF0FC',
-                      color: chatOpen ? '#fff' : '#5B6AD0',
-                      fontSize: 11.5, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap',
-                    }}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                      <path d="M2 3h12a1 1 0 011 1v7a1 1 0 01-1 1H5l-3 3V4a1 1 0 011-1z"/>
-                    </svg>
-                    {chatOpen ? 'Close Chat' : 'Chat with AI'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Speaker chips */}
-              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                {active.speakers.slice(0, 12).map((sp, i) => {
-                  const c = colorFor(i);
-                  return (
-                    <div
-                      key={sp.id}
-                      onClick={() => jumpSpeaker(sp.id)}
-                      title={`Click to jump to ${sp.name}'s messages`}
+                    {/* Chat toggle */}
+                    <button
+                      onClick={() => setChatOpen(p => !p)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 5,
-                        padding: '3px 9px 3px 4px', borderRadius: 20,
-                        background: `${c}18`, border: `1px solid ${c}28`, color: c,
+                        padding: '5px 11px', border: 'none', borderRadius: 20,
+                        background: chatOpen ? '#5B6AD0' : '#EEF0FC',
+                        color: chatOpen ? '#fff' : '#5B6AD0',
                         fontSize: 11.5, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap',
                       }}
                     >
-                      <div style={{ width: 20, height: 20, borderRadius: '50%', background: c, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8.5, fontWeight: 700, color: '#fff' }}>
-                        {initials(sp.name)}
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M2 3h12a1 1 0 011 1v7a1 1 0 01-1 1H5l-3 3V4a1 1 0 011-1z"/>
+                      </svg>
+                      {chatOpen ? 'Close Chat' : 'Chat with AI'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Speaker chips */}
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                  {active.speakers.slice(0, 12).map((sp, i) => {
+                    const c = colorFor(i);
+                    return (
+                      <div
+                        key={sp.id}
+                        onClick={() => jumpSpeaker(sp.id)}
+                        title={`Click to jump to ${sp.name}'s messages`}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5,
+                          padding: '3px 9px 3px 4px', borderRadius: 20,
+                          background: `${c}18`, border: `1px solid ${c}28`, color: c,
+                          fontSize: 11.5, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap',
+                        }}
+                      >
+                        <div style={{ width: 20, height: 20, borderRadius: '50%', background: c, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8.5, fontWeight: 700, color: '#fff' }}>
+                          {initials(sp.name)}
+                        </div>
+                        <span>{sp.name}</span>
                       </div>
-                      <span>{sp.name}</span>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Mobile compact header */}
+            {isMobile && (
+              <div style={{ background: '#fff', borderBottom: '1px solid #E4E7EC', padding: '8px 14px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  {active.speakers.slice(0, 6).map((sp, i) => {
+                    const c = colorFor(i);
+                    return (
+                      <div
+                        key={sp.id}
+                        onClick={() => jumpSpeaker(sp.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          padding: '3px 8px 3px 3px', borderRadius: 20,
+                          background: `${c}18`, border: `1px solid ${c}28`, color: c,
+                          fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{ width: 18, height: 18, borderRadius: '50%', background: c, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7.5, fontWeight: 700, color: '#fff' }}>
+                          {initials(sp.name)}
+                        </div>
+                        <span>{sp.name}</span>
+                      </div>
+                    );
+                  })}
+                  {active.speakers.length > 6 && (
+                    <div style={{ padding: '3px 8px', borderRadius: 20, background: '#F7F8FA', border: '1px solid #E4E7EC', fontSize: 11, color: '#9CA3AF' }}>
+                      +{active.speakers.length - 6} more
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Search bar */}
-            <div style={{ background: '#fff', borderBottom: '1px solid #E4E7EC', padding: '9px 24px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-              <div style={{ position: 'relative', maxWidth: 380, flex: 1 }}>
+            <div style={{ background: '#fff', borderBottom: '1px solid #E4E7EC', padding: isMobile ? '8px 12px' : '9px 24px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <div style={{ position: 'relative', flex: 1, maxWidth: isMobile ? 'none' : 380 }}>
                 <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', pointerEvents: 'none' }} width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
                 </svg>
@@ -440,23 +614,25 @@ export default function ViewerPage() {
                     if (e.key === 'ArrowUp') { stepSearch(-1); e.preventDefault(); }
                   }}
                   style={{
-                    width: '100%', padding: '7px 10px 7px 30px',
+                    width: '100%', padding: '8px 10px 8px 30px',
                     border: '1px solid #E4E7EC', borderRadius: 5,
                     font: '13px/1 Inter, sans-serif', color: '#0D0F14', outline: 'none',
                   }}
                 />
               </div>
-              <span style={{ fontSize: 11.5, color: '#9CA3AF', minWidth: 56 }}>
-                {txSearch ? (matchCount > 0 ? `${matchIdx + 1} / ${matchCount}` : 'No results') : ''}
-              </span>
-              <div style={{ display: 'flex', gap: 3 }}>
+              {txSearch && (
+                <span style={{ fontSize: 11.5, color: '#9CA3AF', minWidth: 48, flexShrink: 0 }}>
+                  {matchCount > 0 ? `${matchIdx + 1}/${matchCount}` : 'None'}
+                </span>
+              )}
+              <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
                 {(['↑', '↓'] as const).map((arrow, di) => (
                   <button
                     key={arrow}
                     onClick={() => stepSearch(di === 0 ? -1 : 1)}
                     disabled={matchCount < 2}
                     style={{
-                      width: 26, height: 26, border: '1px solid #E4E7EC', background: '#fff',
+                      width: 30, height: 30, border: '1px solid #E4E7EC', background: '#fff',
                       borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: matchCount < 2 ? 'not-allowed' : 'pointer', color: '#4A5568', fontSize: 12,
                       opacity: matchCount < 2 ? .35 : 1,
@@ -469,7 +645,7 @@ export default function ViewerPage() {
             </div>
 
             {/* Transcript body */}
-            <div ref={txBodyRef} id="txBody" style={{ flex: 1, overflowY: 'auto', padding: '22px 24px 40px' }}>
+            <div ref={txBodyRef} id="txBody" style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '14px 14px 40px' : '22px 24px 40px' }}>
               {(() => {
                 let prevHour = -1;
                 return groups.map((group, gi) => {
@@ -500,12 +676,12 @@ export default function ViewerPage() {
                       <div
                         className="msg-group"
                         data-spk={group.speakerId}
-                        style={{ display: 'flex', gap: 11, marginBottom: 18 }}
+                        style={{ display: 'flex', gap: isMobile ? 8 : 11, marginBottom: 18 }}
                       >
                         <div style={{
-                          width: 34, height: 34, borderRadius: '50%',
+                          width: isMobile ? 30 : 34, height: isMobile ? 30 : 34, borderRadius: '50%',
                           background: c, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0, marginTop: 1,
+                          fontSize: isMobile ? 11 : 12, fontWeight: 700, color: '#fff', flexShrink: 0, marginTop: 1,
                         }} title={group.name}>
                           {initials(group.name)}
                         </div>
@@ -537,13 +713,24 @@ export default function ViewerPage() {
         )}
       </main>
 
-      {/* ── CHAT PANEL — inline next to transcript ───── */}
+      {/* ── CHAT PANEL ───────────────────────────────── */}
       {chatOpen && active && (
-        <ChatPanel
-          session={active}
-          user={user}
-          onClose={() => setChatOpen(false)}
-        />
+        isMobile ? (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', flexDirection: 'column' }}>
+            <ChatPanel
+              session={active}
+              user={user}
+              onClose={() => setChatOpen(false)}
+              mobile
+            />
+          </div>
+        ) : (
+          <ChatPanel
+            session={active}
+            user={user}
+            onClose={() => setChatOpen(false)}
+          />
+        )
       )}
     </div>
   );
