@@ -51,6 +51,23 @@ export default function ViewerPage() {
   const [chatIndex, setChatIndex] = useState<Set<string>>(new Set());
   const txBodyRef = useRef<HTMLDivElement>(null);
 
+  function lsKey(uid: string) { return `chatIndex_${uid}`; }
+
+  function lsLoad(uid: string): Set<string> {
+    try {
+      const raw = localStorage.getItem(lsKey(uid));
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch { return new Set(); }
+  }
+
+  function lsAdd(uid: string, docId: string) {
+    try {
+      const s = lsLoad(uid);
+      s.add(docId);
+      localStorage.setItem(lsKey(uid), JSON.stringify([...s]));
+    } catch { /* ignore */ }
+  }
+
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 768);
     check();
@@ -61,7 +78,21 @@ export default function ViewerPage() {
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
     if (!loading && user) {
-      loadChatIndex(user.uid).then(idx => setChatIndex(idx)).catch(() => {});
+      // Seed from localStorage immediately so badges show before Firestore resolves
+      const local = lsLoad(user.uid);
+      if (local.size > 0) setChatIndex(local);
+
+      // Merge with Firestore (may have data from other devices)
+      loadChatIndex(user.uid)
+        .then(remote => {
+          setChatIndex(prev => {
+            const merged = new Set([...prev, ...remote]);
+            // Persist merged result back to localStorage
+            try { localStorage.setItem(lsKey(user.uid), JSON.stringify([...merged])); } catch { /* ignore */ }
+            return merged;
+          });
+        })
+        .catch(() => {});
     }
   }, [user, loading, router]);
 
@@ -740,7 +771,7 @@ export default function ViewerPage() {
               session={active}
               user={user}
               onClose={() => setChatOpen(false)}
-              onFirstMessage={id => setChatIndex(prev => new Set([...prev, id]))}
+              onFirstMessage={id => { lsAdd(user.uid, id); setChatIndex(prev => new Set([...prev, id])); }}
               mobile
             />
           </div>
@@ -749,7 +780,7 @@ export default function ViewerPage() {
             session={active}
             user={user}
             onClose={() => setChatOpen(false)}
-            onFirstMessage={id => setChatIndex(prev => new Set([...prev, id]))}
+            onFirstMessage={id => { lsAdd(user.uid, id); setChatIndex(prev => new Set([...prev, id])); }}
           />
         )
       )}
