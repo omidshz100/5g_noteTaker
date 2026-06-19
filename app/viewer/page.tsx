@@ -217,20 +217,9 @@ export default function ViewerPage() {
             />
           </div>
 
-          {/* Load button */}
-          <label style={{
-            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            padding: '8px', background: '#5B6AD0', color: '#fff',
-            border: 'none', borderRadius: 5, font: '500 13px/1 Inter, sans-serif',
-            cursor: 'pointer', letterSpacing: '-.01em',
-          }}>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 2v8M5 7l3 3 3-3"/><path d="M2 13h12"/>
-            </svg>
-            Load Transcripts
-            <input type="file" accept=".json" multiple style={{ display: 'none' }}
-              onChange={e => { if (e.target.files) loadFiles(e.target.files); e.target.value = ''; }} />
-          </label>
+          {/* Load button — hidden, transcripts auto-load from server */}
+          <input type="file" accept=".json" multiple style={{ display: 'none' }}
+            onChange={e => { if (e.target.files) loadFiles(e.target.files); e.target.value = ''; }} />
         </div>
 
         {/* Loading progress bar */}
@@ -548,13 +537,28 @@ export default function ViewerPage() {
         )}
       </main>
 
-      {/* ── CHAT PANEL ───────────────────────────────── */}
+      {/* ── CHAT PANEL — fixed overlay from right ────── */}
       {chatOpen && active && (
-        <ChatPanel
-          session={active}
-          user={user}
-          onClose={() => setChatOpen(false)}
-        />
+        <>
+          {/* backdrop */}
+          <div
+            onClick={() => setChatOpen(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 40,
+              background: 'rgba(0,0,0,0.15)',
+            }}
+          />
+          <div style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0,
+            zIndex: 50, boxShadow: '-4px 0 24px rgba(0,0,0,0.12)',
+          }}>
+            <ChatPanel
+              session={active}
+              user={user}
+              onClose={() => setChatOpen(false)}
+            />
+          </div>
+        </>
       )}
     </div>
   );
