@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { User, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { saveUserProfile } from '@/lib/firestore';
 
@@ -23,7 +23,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const timeout = setTimeout(() => setLoading(false), 5000);
+    const timeout = setTimeout(() => setLoading(false), 8000);
+
+    // Process redirect result (mobile sign-in comes back here)
+    getRedirectResult(auth).catch(() => {});
 
     const unsubscribe = onAuthStateChanged(auth, async u => {
       clearTimeout(timeout);
@@ -44,14 +47,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async () => {
-    // Set loading BEFORE popup so the viewer page shows a spinner
-    // instead of seeing user=null and redirecting to login
     setLoading(true);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      await signInWithPopup(auth, provider);
-      // onAuthStateChanged will call setUser + setLoading(false)
+      if (isMobile) {
+        // Mobile: use redirect (popup blocked / sessionStorage issue on iOS)
+        await signInWithRedirect(auth, provider);
+        // Page navigates away — code below won't run on mobile
+      } else {
+        // Desktop: use popup for better UX
+        await signInWithPopup(auth, provider);
+      }
     } catch (err) {
       setLoading(false);
       throw err;
