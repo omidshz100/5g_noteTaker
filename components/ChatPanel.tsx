@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { User } from 'firebase/auth';
+import ReactMarkdown from 'react-markdown';
 import { Session, ChatMessage } from '@/lib/types';
 import { transcriptToText } from '@/lib/transcriptUtils';
 import { saveChatMessage, loadChatMessages, transcriptDocId } from '@/lib/firestore';
@@ -220,16 +221,22 @@ export default function ChatPanel({ session, user, onClose, onFirstMessage, mobi
                 )}
 
                 {/* Bubble */}
-                <div style={{ maxWidth: '75%' }}>
+                <div style={{ maxWidth: '80%' }}>
                   <div style={{
                     padding: '8px 11px',
                     borderRadius: msg.role === 'user' ? '12px 2px 12px 12px' : '2px 12px 12px 12px',
                     background: msg.role === 'user' ? '#5B6AD0' : '#F7F8FA',
                     color: msg.role === 'user' ? '#fff' : '#0D0F14',
                     fontSize: 13, lineHeight: 1.6,
-                    whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                    wordBreak: 'break-word',
                   }}>
-                    {msg.content}
+                    {msg.role === 'user' ? (
+                      <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
+                    ) : (
+                      <div className="md-body">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    )}
                   </div>
 
                   {/* Token info for assistant messages */}
@@ -337,6 +344,26 @@ export default function ChatPanel({ session, user, onClose, onFirstMessage, mobi
           0%, 80%, 100% { transform: translateY(0); }
           40% { transform: translateY(-5px); }
         }
+        .md-body p { margin: 0 0 8px; }
+        .md-body p:last-child { margin-bottom: 0; }
+        .md-body ul, .md-body ol { margin: 4px 0 8px; padding-left: 18px; }
+        .md-body li { margin-bottom: 3px; }
+        .md-body h1, .md-body h2, .md-body h3, .md-body h4 {
+          font-weight: 700; margin: 10px 0 5px; line-height: 1.3;
+        }
+        .md-body h1 { font-size: 15px; }
+        .md-body h2 { font-size: 14px; }
+        .md-body h3, .md-body h4 { font-size: 13px; }
+        .md-body code {
+          background: #E8EAF0; border-radius: 3px;
+          padding: 1px 5px; font-size: 12px; font-family: monospace;
+        }
+        .md-body pre { background: #E8EAF0; border-radius: 6px; padding: 10px; margin: 6px 0; overflow-x: auto; }
+        .md-body pre code { background: none; padding: 0; }
+        .md-body strong { font-weight: 700; }
+        .md-body em { font-style: italic; }
+        .md-body hr { border: none; border-top: 1px solid #D1D5DB; margin: 8px 0; }
+        .md-body a { color: #5B6AD0; text-decoration: underline; }
       `}</style>
     </div>
   );
